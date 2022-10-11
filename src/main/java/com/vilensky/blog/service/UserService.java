@@ -1,5 +1,6 @@
 package com.vilensky.blog.service;
 
+import com.vilensky.blog.dto.UserDTO;
 import com.vilensky.blog.entity.User;
 import com.vilensky.blog.entity.enums.ERole;
 import com.vilensky.blog.exceptions.UserExistsException;
@@ -8,8 +9,11 @@ import com.vilensky.blog.repository.UserRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
+
+import java.security.Principal;
 
 @Service
 public class UserService {
@@ -23,6 +27,7 @@ public class UserService {
         this.userRepository = userRepository;
         this.bCryptPasswordEncoder = bCryptPasswordEncoder;
     }
+
     public User createUser(SignupRequest userIn){
         User user = new User();
         user.setEmail(userIn.getEmail());
@@ -39,7 +44,25 @@ public class UserService {
             LOGGER.error("Error during registration. {}", e.getMessage());
             throw new UserExistsException("The user " + user.getUsername() + " already exists");
         }
+    }
 
+    public User updateUser(UserDTO userDTO, Principal principal){
+        User user = getUserByPrincipal(principal);
+        user.setName(userDTO.getFirstname());
+        user.setLastname(userDTO.getLastname());
+        user.setBio(userDTO.getBio());
+
+        return userRepository.save(user);
+    }
+
+    public User getCurrentUser(Principal principal){
+        return getUserByPrincipal(principal);
+    }
+
+    private User getUserByPrincipal(Principal principal){
+        String username = principal.getName();
+        return userRepository.findUserByUsername(username)
+                .orElseThrow(() -> new UsernameNotFoundException("Username "+ username + " not found"));
     }
 
 }
